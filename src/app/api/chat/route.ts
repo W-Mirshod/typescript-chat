@@ -7,9 +7,13 @@ import { z } from "zod";
 export const maxDuration = 30;
 
 // Initialize Azure OpenAI provider
+// Initialize Azure OpenAI provider
+// If AZURE_OPENAI_ENDPOINT is set, it takes precedence (useful for proxies or custom domains).
+// Otherwise, we construct it from AZURE_OPENAI_RESOURCE_NAME.
 const azureProvider = createAzure({
     apiKey: process.env.AZURE_OPENAI_API_KEY!,
-    resourceName: process.env.AZURE_OPENAI_RESOURCE_NAME!,
+    baseURL: process.env.AZURE_OPENAI_ENDPOINT,
+    apiVersion: process.env.AZURE_OPENAI_API_VERSION,
 });
 
 export async function POST(req: Request) {
@@ -36,7 +40,7 @@ export async function POST(req: Request) {
     }
 
     const result = await streamText({
-        model: azureProvider(process.env.AZURE_OPENAI_DEPLOYMENT_NAME || "gpt-4o"),
+        model: azureProvider(process.env.AZURE_OPENAI_DEPLOYMENT || "gpt-4o"),
         messages: coreMessages,
         tools: {
             getWeather: tool({
