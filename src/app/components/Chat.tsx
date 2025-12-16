@@ -1,7 +1,7 @@
 'use client';
 
 import { useChat } from "@ai-sdk/react";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type ReactElement } from "react";
 // Types workaround for AI SDK 5.x
 type Message = any;
 type ToolInvocation = any;
@@ -37,7 +37,7 @@ function arrayToMarkdownTable(data: any[][]): string {
 }
 
 // Helper function to render markdown table as HTML
-function renderTablePreview(data: any[][]): JSX.Element {
+function renderTablePreview(data: any[][]): ReactElement {
     if (!data || data.length === 0) return <></>;
     
     return (

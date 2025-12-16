@@ -1,5 +1,5 @@
 import { streamText, convertToCoreMessages, tool } from "ai";
-import { azureOpenAI } from "@ai-sdk/azure";
+import { createAzure } from "@ai-sdk/azure";
 import { saveMessage, getThread, createThread, deleteThread } from "@/lib/db-queries";
 import { getSheetData, updateCell } from "@/lib/xlsx";
 import { z } from "zod";
@@ -7,7 +7,7 @@ import { z } from "zod";
 export const maxDuration = 30;
 
 // Initialize Azure OpenAI provider
-const azureProvider = azureOpenAI({
+const azureProvider = createAzure({
     apiKey: process.env.AZURE_OPENAI_API_KEY!,
     resourceName: process.env.AZURE_OPENAI_RESOURCE_NAME!,
 });
