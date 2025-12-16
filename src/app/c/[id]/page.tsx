@@ -2,6 +2,8 @@ import { Chat } from "@/app/components/Chat";
 import { getMessages, getThread, Message } from "@/lib/db-queries";
 import { notFound } from "next/navigation";
 
+export const dynamic = 'force-dynamic';
+
 interface PageProps {
     params: Promise<{ id: string }>;
 }

@@ -1,21 +1,20 @@
 FROM oven/bun:1 AS base
 WORKDIR /app
 
-# Install dependencies
-COPY package.json bun.lock ./
-RUN bun install --frozen-lockfile
+RUN apt-get update && apt-get install -y --no-install-recommends python3 build-essential make g++ pkg-config ca-certificates && rm -rf /var/lib/apt/lists/*
 
-# Copy application files
+ENV PYTHON=/usr/bin/python3
+
+COPY package.json bun.lock ./
+RUN bun install
+
 COPY . .
 
-# Create data directory if it doesn't exist
 RUN mkdir -p data
 
-# Initialize database and create XLSX if needed (will skip if already exists)
 RUN bun scripts/init-db.ts || true
 RUN bun scripts/create-xlsx.ts || true
 
-# Build Next.js app
 RUN bun run build
 
 EXPOSE 3000

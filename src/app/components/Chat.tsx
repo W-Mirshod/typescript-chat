@@ -3,7 +3,7 @@
 import { useChat } from "@ai-sdk/react";
 import { useEffect, useRef, useState, type ReactElement } from "react";
 import { Loader2, Terminal, MessageSquare, ArrowRight } from "lucide-react";
-// Types workaround for AI SDK 5.x
+// Types workarounds
 type Message = any;
 type ToolInvocation = any;
 import { useRouter, usePathname } from "next/navigation";
@@ -112,9 +112,10 @@ export function Chat({ id, initialMessages = [] }: ChatProps) {
     const [isTableOpen, setIsTableOpen] = useState(false);
     const [localInput, setLocalInput] = useState<string>('');
 
-    // If id is provided, we pass it to useChat body so API knows which thread
-    const { messages, input, handleInputChange, handleSubmit, status, addToolResult, setInput, append } = useChat({
-        api: '/api/chat',
+    // Use useChat from @ai-sdk/react. 
+    // Note: In this version (v2+ / ai v5), useChat helpers are reduced.
+    // We must manage input state manually and use sendMessage.
+    const { messages, status, addToolResult, sendMessage, error } = useChat({
         initialMessages,
         maxSteps: 5,
         body: { threadId: id },
@@ -123,16 +124,21 @@ export function Chat({ id, initialMessages = [] }: ChatProps) {
                 router.push(`/c/${id}`);
                 router.refresh();
             }
+        },
+        onError: (err: Error) => {
+            console.error("Chat error:", err);
         }
-    } as any) as any;
+    } as any);
+
+    useEffect(() => {
+        console.log("Current messages length:", messages.length);
+        console.log("Current status:", status);
+        if (error) console.error("Chat error state:", error);
+    }, [messages, status, error]);
 
     const scrollRef = useRef<HTMLDivElement>(null);
 
-    // initialize localInput once from the hook's input value
-    useEffect(() => {
-        setLocalInput(input || '');
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, []);
+    // No need to sync input from hook anymore as we manage it locally
 
     useEffect(() => {
         if (scrollRef.current) {
@@ -149,14 +155,14 @@ export function Chat({ id, initialMessages = [] }: ChatProps) {
                 onInsertReference={(ref) => {
                     const newValue = `${localInput || ''} ${ref}`.trim();
                     setLocalInput(newValue);
-                    setInput(newValue);
                 }}
             />
             <div className="flex-1 overflow-y-auto p-4 space-y-4" ref={scrollRef}>
                 {messages.length === 0 ? (
                     <WelcomeScreen onExampleClick={(text) => {
                         setLocalInput(text);
-                        append({ role: 'user', content: text });
+                        // Send message immediately
+                        sendMessage({ role: 'user', content: text } as any);
                     }} />
                 ) : (
                     <>
@@ -215,13 +221,13 @@ export function Chat({ id, initialMessages = [] }: ChatProps) {
                                                     <div className="flex gap-2">
                                                         <button
                                                             className="px-3 py-1 bg-red-500 text-white text-sm rounded hover:bg-red-600"
-                                                            onClick={() => addToolResult({ toolCallId, result: 'Yes' })}
+                                                            onClick={() => addToolResult({ toolCallId, output: 'Yes' } as any)}
                                                         >
                                                             Yes
                                                         </button>
                                                         <button
                                                             className="px-3 py-1 bg-gray-200 text-gray-800 text-sm rounded hover:bg-gray-300"
-                                                            onClick={() => addToolResult({ toolCallId, result: 'No' })}
+                                                            onClick={() => addToolResult({ toolCallId, output: 'No' } as any)}
                                                         >
                                                             No
                                                         </button>
@@ -245,16 +251,24 @@ export function Chat({ id, initialMessages = [] }: ChatProps) {
                 ) : null}
             </div>
 
+            {error && (
+                <div className="p-4 mx-4 mb-4 bg-red-50 text-red-600 rounded-lg border border-red-200 text-sm">
+                    Error: {error.message || "Something went wrong"}
+                </div>
+            )}
+
             <div className="p-4 border-t border-gray-200 bg-white shadow-sm relative z-10">
                 <form
-                    onSubmit={(e) => {
+                    onSubmit={async (e) => {
                         e.preventDefault();
-                        if (!localInput.trim()) return;
-                        setInput(''); // Clear AI SDK input just in case
+                        const message = (localInput || '').trim();
+                        if (!message) return;
 
-                        const message = localInput;
-                        setLocalInput(''); // Clear local immediately
-                        append({ role: 'user', content: message });
+                        if (sendMessage) {
+                            setLocalInput('');
+                            // Assuming sendMessage accepts a message object
+                            await sendMessage({ role: 'user', content: message } as any);
+                        }
                     }}
                     className="flex gap-2"
                     noValidate
@@ -279,3 +293,4 @@ export function Chat({ id, initialMessages = [] }: ChatProps) {
         </div>
     );
 }
+

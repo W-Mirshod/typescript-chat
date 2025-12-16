@@ -2,7 +2,7 @@ import db from "../src/lib/db";
 
 console.log("Initializing database...");
 
-db.run(`
+db.exec(`
   CREATE TABLE IF NOT EXISTS threads (
     id TEXT PRIMARY KEY,
     title TEXT,
@@ -10,7 +10,7 @@ db.run(`
   );
 `);
 
-db.run(`
+db.exec(`
   CREATE TABLE IF NOT EXISTS messages (
     id TEXT PRIMARY KEY,
     thread_id TEXT,
