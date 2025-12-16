@@ -64,24 +64,29 @@ export function Chat({ id, initialMessages = [] }: ChatProps) {
     const pathname = usePathname();
     const [tableData, setTableData] = useState<any[][] | null>(null);
     const [isTableOpen, setIsTableOpen] = useState(false);
+    const [localInput, setLocalInput] = useState<string>('');
 
     // If id is provided, we pass it to useChat body so API knows which thread
     const { messages, input, handleInputChange, handleSubmit, status, addToolResult, setInput } = useChat({
+        api: '/api/chat',
         initialMessages,
-        maxSteps: 5, // Enable multi-step tools
+        maxSteps: 5,
         body: { threadId: id },
         onFinish: () => {
             if (pathname === '/' && id) {
                 router.push(`/c/${id}`);
-                // Also need to refresh the sidebar to show new thread
-                // We can't trigger server refresh easily from here without server action
-                // But next/navigation router.refresh() handles server component refresh
                 router.refresh();
             }
         }
     } as any) as any;
 
     const scrollRef = useRef<HTMLDivElement>(null);
+
+    // initialize localInput once from the hook's input value
+    useEffect(() => {
+        setLocalInput(input || '');
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, []);
 
     useEffect(() => {
         if (scrollRef.current) {
@@ -90,12 +95,16 @@ export function Chat({ id, initialMessages = [] }: ChatProps) {
     }, [messages]);
 
     return (
-        <div className="flex flex-col h-full max-w-3xl mx-auto w-full">
+        <div className="flex flex-col h-full max-w-3xl mx-auto w-full relative">
             <TableDialog
                 isOpen={isTableOpen}
                 onClose={() => setIsTableOpen(false)}
                 data={tableData || []}
-                onInsertReference={(ref) => setInput(input + " " + ref)}
+                onInsertReference={(ref) => {
+                    const newValue = `${localInput || ''} ${ref}`.trim();
+                    setLocalInput(newValue);
+                    setInput(newValue);
+                }}
             />
             <div className="flex-1 overflow-y-auto p-4 space-y-4" ref={scrollRef}>
                 {messages.map((m: any) => (
@@ -179,19 +188,29 @@ export function Chat({ id, initialMessages = [] }: ChatProps) {
                 ) : null}
             </div>
 
-            <div className="p-4 border-t bg-white">
-                <form onSubmit={handleSubmit} className="flex gap-2">
+            <div className="p-4 border-t border-gray-200 bg-white shadow-sm relative z-10">
+                <form
+                    onSubmit={async (e) => {
+                        e.preventDefault();
+                        setInput(localInput || '');
+                        await new Promise((r) => setTimeout(r, 0));
+                        handleSubmit(e);
+                    }}
+                    className="flex gap-2"
+                    noValidate
+                >
                     <input
-                        className="flex-1 p-2 border rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
-                        value={input || ''}
-                        onChange={handleInputChange}
+                        type="text"
+                        className="flex-1 p-3 border-2 border-gray-300 bg-white text-gray-900 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 placeholder:text-gray-500"
+                        value={localInput}
+                        onChange={(e) => setLocalInput(e.target.value)}
                         placeholder="Type a message..."
                         autoFocus
                     />
                     <button
                         type="submit"
-                        className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 disabled:opacity-50"
-                        disabled={status === 'streaming' || !input || !input.trim()}
+                        className="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed font-medium shadow-sm transition-colors"
+                        disabled={status === 'streaming' || !localInput || !localInput.trim()}
                     >
                         Send
                     </button>
