@@ -41,6 +41,53 @@ It features persistent threads, message history, generative UI tools (weather, c
 
 3. Open [http://localhost:3000](http://localhost:3000).
 
+## Docker Deployment
+
+### Using Docker Compose (Recommended)
+
+1. Create a `.env` file in the project root:
+   ```bash
+   AZURE_OPENAI_API_KEY=your_azure_api_key
+   AZURE_OPENAI_RESOURCE_NAME=your_resource_name
+   AZURE_OPENAI_DEPLOYMENT_NAME=your_deployment_name
+   ```
+
+2. Build and start the container:
+   ```bash
+   docker-compose up -d
+   ```
+
+3. View logs:
+   ```bash
+   docker-compose logs -f
+   ```
+
+4. Stop the container:
+   ```bash
+   docker-compose down
+   ```
+
+The Docker setup includes:
+- Persistent volumes for `chat.db` and `data/example.xlsx`
+- Automatic database and XLSX file initialization
+- Production-ready Next.js build
+
+### Using Docker directly
+
+```bash
+# Build the image
+docker build -t typescript-chat .
+
+# Run the container
+docker run -p 3000:3000 \
+  -e AZURE_OPENAI_API_KEY=your_key \
+  -e AZURE_OPENAI_RESOURCE_NAME=your_resource \
+  -e AZURE_OPENAI_DEPLOYMENT_NAME=your_deployment \
+  -v $(pwd)/data:/app/data \
+  -v $(pwd)/chat.db:/app/chat.db \
+  typescript-chat
+```
+
 ## Features
 
 - **Threads**: Create new threads, switch between them via sidebar. Autosave on first message.
