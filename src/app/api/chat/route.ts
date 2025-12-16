@@ -1,10 +1,16 @@
 import { streamText, convertToCoreMessages, tool } from "ai";
-import { openai } from "@ai-sdk/openai";
+import { azureOpenAI } from "@ai-sdk/azure";
 import { saveMessage, getThread, createThread, deleteThread } from "@/lib/db-queries";
 import { getSheetData, updateCell } from "@/lib/xlsx";
 import { z } from "zod";
 
 export const maxDuration = 30;
+
+// Initialize Azure OpenAI provider
+const azureProvider = azureOpenAI({
+    apiKey: process.env.AZURE_OPENAI_API_KEY!,
+    resourceName: process.env.AZURE_OPENAI_RESOURCE_NAME!,
+});
 
 export async function POST(req: Request) {
     const { messages, threadId } = await req.json();
@@ -30,7 +36,7 @@ export async function POST(req: Request) {
     }
 
     const result = await streamText({
-        model: openai("gpt-4o"),
+        model: azureProvider(process.env.AZURE_OPENAI_DEPLOYMENT_NAME || "gpt-4o"),
         messages: coreMessages,
         tools: {
             getWeather: tool({

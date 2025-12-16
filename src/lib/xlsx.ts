@@ -9,12 +9,24 @@ export function getSheetData(range?: string) {
     const ws = wb.Sheets[sheetName];
 
     if (range) {
-        // range could be "A1:B2" or "Sheet1!A1:B2"
-        // we'll assume current sheet if no sheet specified, or parse it
-        // For simplicity, just decode range on the sheet.
-        // But XLSX utils handle A1:B2
-        // We'll return JSON data
-        return XLSX.utils.sheet_to_json(ws, { header: 1, range }); // array of arrays
+        // Parse range mentions like "@Sheet1!A1:B2" or "Sheet1!A1:B2" or plain "A1:B2"
+        let parsedRange = range;
+        
+        // Remove @ prefix if present
+        if (parsedRange.startsWith('@')) {
+            parsedRange = parsedRange.substring(1);
+        }
+        
+        // Extract sheet name and range if format is "Sheet1!A1:B2"
+        const sheetRangeMatch = parsedRange.match(/^([^!]+)!(.+)$/);
+        if (sheetRangeMatch) {
+            // Sheet name is provided (for future extensibility)
+            // Currently we only use the first sheet, but we parse it for consistency
+            parsedRange = sheetRangeMatch[2]; // Extract just the range part (A1:B2)
+        }
+        
+        // XLSX utils handle A1:B2 format
+        return XLSX.utils.sheet_to_json(ws, { header: 1, range: parsedRange }); // array of arrays
     }
 
     return XLSX.utils.sheet_to_json(ws, { header: 1 });

@@ -13,6 +13,52 @@ interface ChatProps {
     initialMessages?: Message[];
 }
 
+// Helper function to convert 2D array to markdown table
+function arrayToMarkdownTable(data: any[][]): string {
+    if (!data || data.length === 0) return '';
+    
+    let markdown = '';
+    data.forEach((row, index) => {
+        const rowStr = row.map(cell => {
+            const cellStr = cell === null || cell === undefined ? '' : String(cell);
+            // Escape pipes in cell content
+            return cellStr.replace(/\|/g, '\\|');
+        }).join(' | ');
+        markdown += `| ${rowStr} |\n`;
+        
+        // Add header separator after first row
+        if (index === 0) {
+            const separator = row.map(() => '---').join(' | ');
+            markdown += `| ${separator} |\n`;
+        }
+    });
+    
+    return markdown;
+}
+
+// Helper function to render markdown table as HTML
+function renderTablePreview(data: any[][]): JSX.Element {
+    if (!data || data.length === 0) return <></>;
+    
+    return (
+        <div className="mt-2 mb-2 overflow-x-auto">
+            <table className="min-w-full text-xs border-collapse border border-gray-300">
+                <tbody>
+                    {data.map((row, r) => (
+                        <tr key={r}>
+                            {row.map((cell, c) => (
+                                <td key={c} className="border border-gray-300 px-2 py-1 bg-white text-gray-800">
+                                    {cell === null || cell === undefined ? '' : String(cell)}
+                                </td>
+                            ))}
+                        </tr>
+                    ))}
+                </tbody>
+            </table>
+        </div>
+    );
+}
+
 export function Chat({ id, initialMessages = [] }: ChatProps) {
     const router = useRouter();
     const pathname = usePathname();
@@ -76,17 +122,19 @@ export function Chat({ id, initialMessages = [] }: ChatProps) {
                                 }
                                 if (toolInvocation.toolName === 'readSheet') {
                                     if ('result' in toolInvocation) {
+                                        const sheetData = toolInvocation.result as any[][];
                                         return (
                                             <div key={toolCallId} className="mt-2 text-sm">
-                                                <div className="text-gray-500 mb-1">Spreadsheet Data:</div>
+                                                <div className="text-gray-500 mb-2 font-medium">Spreadsheet Data:</div>
+                                                {renderTablePreview(sheetData)}
                                                 <button
                                                     onClick={() => {
-                                                        setTableData(toolInvocation.result as any[][]);
+                                                        setTableData(sheetData);
                                                         setIsTableOpen(true);
                                                     }}
-                                                    className="px-3 py-2 bg-green-50 text-green-700 border border-green-200 rounded hover:bg-green-100 flex items-center gap-2"
+                                                    className="mt-2 px-3 py-2 bg-green-50 text-green-700 border border-green-200 rounded hover:bg-green-100 flex items-center gap-2"
                                                 >
-                                                    <span className="font-mono text-xs">View Table</span>
+                                                    <span className="font-mono text-xs">View Full Table</span>
                                                 </button>
                                             </div>
                                         );

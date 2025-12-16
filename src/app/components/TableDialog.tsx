@@ -29,10 +29,17 @@ export function TableDialog({ isOpen, onClose, data, onInsertReference }: TableD
         setIsSelecting(false);
     };
 
-    // Convert row/col to A1 notation
+    // Convert row/col to A1 notation (handles columns beyond Z: AA, AB, etc.)
     const toA1 = (r: number, c: number) => {
-        const colLetter = String.fromCharCode(65 + c); // Simple A-Z for demo
-        // For more columns, need better logic, but requirement is "Junior".
+        // Convert column index to Excel column letters (0 -> A, 25 -> Z, 26 -> AA, etc.)
+        let colLetter = '';
+        let colNum = c;
+        
+        while (colNum >= 0) {
+            colLetter = String.fromCharCode(65 + (colNum % 26)) + colLetter;
+            colNum = Math.floor(colNum / 26) - 1;
+        }
+        
         return `${colLetter}${r + 1}`;
     };
 

@@ -26,11 +26,13 @@ It features persistent threads, message history, generative UI tools (weather, c
 
 ## Running the App
 
-1. Set your OpenAI API Key:
+1. Set your Azure OpenAI credentials:
    ```bash
-   export OPENAI_API_KEY=your_key_here
+   export AZURE_OPENAI_API_KEY=your_azure_api_key
+   export AZURE_OPENAI_RESOURCE_NAME=your_resource_name
+   export AZURE_OPENAI_DEPLOYMENT_NAME=your_deployment_name
    ```
-   (Or create a `.env.local` file)
+   (Or create a `.env.local` file with these variables)
 
 2. Start the development server:
    ```bash
@@ -46,8 +48,11 @@ It features persistent threads, message history, generative UI tools (weather, c
 - **Generative UI**:
   - **Weather**: Ask "What's the weather in NY?" (Mock tool).
   - **Dangerous Actions**: Ask "Update cell A2 to 500" or "Delete this thread". A confirmation UI will appear.
-  - **XLSX**: Ask "Show me the excel sheet". Click "View Table" to open the grid.
-    - **Selection**: Select cells in the grid and click "Insert Mention" to add `@Sheet1!A1` to your chat.
+  - **XLSX**: Ask "Show me the excel sheet" or "Read range @Sheet1!A1:B5".
+    - **Table Preview**: When reading sheet data, a preview table is displayed inline in the chat message.
+    - **Full Table View**: Click "View Full Table" to open the grid in a modal dialog.
+    - **Cell Selection**: Select cells in the grid and click "Insert Mention" to add `@Sheet1!A1:B2` to your chat.
+    - **Range Mentions**: Use range mentions like `@Sheet1!A1:B5` in your messages, and the agent will understand and read those ranges.
 
 ## Architecture
 
@@ -59,3 +64,4 @@ It features persistent threads, message history, generative UI tools (weather, c
 
 - "Delete Thread" tool deletes from DB but might require refresh to disappear from sidebar immediately (though `revalidatePath`/`router.refresh` is attempted).
 - XLSX writes are simplified (single file `data/example.xlsx`).
+- Currently operates on the first sheet of the XLSX file only.
