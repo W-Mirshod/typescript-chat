@@ -7,7 +7,7 @@ export async function createNewThread(message?: string) {
     const id = crypto.randomUUID();
     createThread(id, title);
     revalidatePath("/");
-    return id;
+    redirect(`/c/${id}`);
 }
 
 export async function removeThread(id: string) {

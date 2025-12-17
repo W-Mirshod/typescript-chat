@@ -12,10 +12,10 @@ export async function Sidebar() {
                     'use server';
                     await createNewThread();
                 }}>
-                    <Link href="/" className="flex items-center gap-2 p-3 bg-gray-900 text-white rounded-lg hover:bg-gray-800 w-full justify-center transition-all shadow-sm">
+                    <button type="submit" className="flex items-center gap-2 p-3 bg-gray-900 text-white rounded-lg hover:bg-gray-800 w-full justify-center transition-all shadow-sm">
                         <PlusCircle size={18} />
                         <span className="font-medium">New Chat</span>
-                    </Link>
+                    </button>
                 </form>
             </div>
             <div className="flex-1 overflow-auto p-2 space-y-1">

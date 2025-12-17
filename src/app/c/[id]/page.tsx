@@ -28,5 +28,5 @@ export default async function ThreadPage({ params }: PageProps) {
         createdAt: new Date(m.created_at),
     }));
 
-    return <Chat id={id} initialMessages={initialMessages} />;
+    return <Chat key={id} id={id} initialMessages={initialMessages} />;
 }

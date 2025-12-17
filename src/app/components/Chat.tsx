@@ -118,7 +118,7 @@ export function Chat({ id, initialMessages = [] }: ChatProps) {
     const { messages, status, addToolResult, sendMessage, error } = useChat({
         id: id || 'default',
         api: '/api/chat',
-        initialMessages,
+        messages: initialMessages,
         maxSteps: 5,
         body: { threadId: id },
         onFinish: () => {
