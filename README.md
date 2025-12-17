@@ -106,3 +106,4 @@ docker run -p 3000:3000 \
 - `src/lib/db.ts`: Bun SQLite connection.
 - `src/app/api/chat/route.ts`: Main API route handling AI stream and server-side tools.
 - `src/app/components/Chat.tsx`: Client-side Chat component with `useChat` and Generative UI rendering.
+
