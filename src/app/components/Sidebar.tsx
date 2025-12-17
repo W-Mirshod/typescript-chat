@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { getThreadList, createNewThread } from "../actions";
 import { PlusCircle, MessageSquare } from "lucide-react";
+import { DeleteThreadButton } from "./DeleteThreadButton";
 
 export async function Sidebar() {
     const threads = await getThreadList();
@@ -20,23 +21,28 @@ export async function Sidebar() {
             </div>
             <div className="flex-1 overflow-auto p-2 space-y-1">
                 {threads.map((thread) => (
-                    <Link
+                    <div
                         key={thread.id}
-                        href={`/c/${thread.id}`}
                         className="group flex items-center gap-3 p-3 rounded-lg hover:bg-white hover:shadow-sm transition-all border border-transparent hover:border-gray-200"
                     >
-                        <div className="p-2 bg-gray-200 text-gray-500 rounded group-hover:bg-blue-50 group-hover:text-blue-600 transition-colors">
-                            <MessageSquare size={16} />
-                        </div>
-                        <div className="flex-1 overflow-hidden">
-                            <div className="font-medium text-gray-700 truncate group-hover:text-gray-900">
-                                {thread.title}
+                        <Link
+                            href={`/c/${thread.id}`}
+                            className="flex items-center gap-3 flex-1 min-w-0"
+                        >
+                            <div className="p-2 bg-gray-200 text-gray-500 rounded group-hover:bg-blue-50 group-hover:text-blue-600 transition-colors flex-shrink-0">
+                                <MessageSquare size={16} />
                             </div>
-                            <div className="text-xs text-gray-400 mt-0.5">
-                                {new Date(thread.created_at).toLocaleDateString()}
+                            <div className="flex-1 overflow-hidden min-w-0">
+                                <div className="font-medium text-gray-700 truncate group-hover:text-gray-900">
+                                    {thread.title}
+                                </div>
+                                <div className="text-xs text-gray-400 mt-0.5">
+                                    {new Date(thread.created_at).toLocaleDateString()}
+                                </div>
                             </div>
-                        </div>
-                    </Link>
+                        </Link>
+                        <DeleteThreadButton threadId={thread.id} />
+                    </div>
                 ))}
             </div>
         </div>

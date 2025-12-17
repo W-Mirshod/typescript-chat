@@ -10,10 +10,6 @@ export async function createNewThread(message?: string) {
     redirect(`/c/${id}`);
 }
 
-export async function removeThread(id: string) {
-    deleteThread(id);
-    revalidatePath("/");
-}
 
 export async function getThreadList() {
     return getThreads();
