@@ -17,4 +17,10 @@ services:
       - ./data:/app/data
       - ./chat.db:/app/chat.db
     restart: unless-stopped
+    networks:
+      - web
+
+networks:
+  web:
+    external: true
 

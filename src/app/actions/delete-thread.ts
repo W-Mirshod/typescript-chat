@@ -11,3 +11,4 @@ export async function removeThread(id: string, shouldRedirect: boolean = false) 
         redirect("/");
     }
 }
+

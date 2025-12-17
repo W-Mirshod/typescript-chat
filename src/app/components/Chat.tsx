@@ -1,13 +1,14 @@
 'use client';
 
 import { useChat } from "@ai-sdk/react";
-import { useEffect, useRef, useState, type ReactElement } from "react";
-import { Loader2, Terminal, MessageSquare, ArrowRight } from "lucide-react";
+import { useEffect, useRef, useState, useMemo, type ReactElement } from "react";
+import { Loader2, Terminal, MessageSquare, ArrowRight, AlertTriangle, CheckCircle2, XCircle } from "lucide-react";
 // Types workarounds
 type Message = any;
 type ToolInvocation = any;
 import { useRouter, usePathname } from "next/navigation";
 import { TableDialog } from "./TableDialog";
+import { getCachedSpreadsheetData } from "@/lib/spreadsheet-cache";
 
 interface ChatProps {
     id?: string;
@@ -142,16 +143,21 @@ export function Chat({ id, initialMessages = [] }: ChatProps) {
     const [tableData, setTableData] = useState<any[][] | null>(null);
     const [isTableOpen, setIsTableOpen] = useState(false);
     const [localInput, setLocalInput] = useState<string>('');
+    const [persistentTableData, setPersistentTableData] = useState<any[][] | null>(null);
+
+    // Ensure we have a stable threadId even if props.id is not provided
+    const [generatedId] = useState(() => typeof crypto !== 'undefined' && 'randomUUID' in crypto ? crypto.randomUUID() : Math.random().toString(36).substring(7));
+    const threadId = id || generatedId;
 
     // Use useChat from @ai-sdk/react. 
     // Note: In this version (v2+ / ai v5), useChat helpers are reduced.
     // We must manage input state manually and use sendMessage.
     const { messages, status, addToolResult, sendMessage, error } = useChat({
-        id: id || 'default',
+        id: threadId,
         api: '/api/chat',
         messages: initialMessages,
-        maxSteps: 5,
-        body: { threadId: id },
+        maxSteps: 10,
+        body: { threadId },
         onFinish: () => {
             if (pathname === '/' && id) {
                 router.push(`/c/${id}`);
@@ -167,7 +173,48 @@ export function Chat({ id, initialMessages = [] }: ChatProps) {
         console.log("Current messages length:", messages.length);
         console.log("Current status:", status);
         if (error) console.error("Chat error state:", error);
+        
+        messages.forEach((m: any, idx: number) => {
+            if (m.parts) {
+                m.parts.forEach((part: any) => {
+                    if (part.type?.startsWith('tool-')) {
+                        console.log(`Message ${idx} - ${part.type} tool:`, {
+                            state: part.state,
+                            toolCallId: part.toolCallId,
+                            input: part.input,
+                            output: part.output,
+                            result: part.result
+                        });
+                    }
+                });
+            }
+        });
     }, [messages, status, error]);
+
+    // Watch messages for readSheet tool outputs and persist table data
+    useEffect(() => {
+        try {
+            for (const m of messages) {
+                const parts = m.parts || [];
+                for (const part of parts) {
+                    if (!part.type?.startsWith('tool-')) continue;
+                    const toolName = part.type.replace('tool-', '');
+                    if (toolName === 'readSheet' && part.state === 'output-available') {
+                        const sheetData = part.output as any[][];
+                        if (!sheetData) continue;
+                        const currentJson = persistentTableData ? JSON.stringify(persistentTableData) : null;
+                        const newJson = JSON.stringify(sheetData);
+                        if (currentJson !== newJson) {
+                            setPersistentTableData(sheetData);
+                        }
+                        return;
+                    }
+                }
+            }
+        } catch (e) {
+            console.error('Error while extracting readSheet output from messages:', e);
+        }
+    }, [messages, persistentTableData]);
 
     const scrollRef = useRef<HTMLDivElement>(null);
 
@@ -178,6 +225,42 @@ export function Chat({ id, initialMessages = [] }: ChatProps) {
             scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
         }
     }, [messages]);
+
+    useEffect(() => {
+        if (initialMessages.length > 0 && !persistentTableData) {
+            let foundData = false;
+            for (const msg of initialMessages) {
+                if (msg.role === 'assistant' && msg.content) {
+                    const spreadsheetMatch = msg.content.match(/<!-- SPREADSHEET_DATA:(.+?) -->/);
+                    if (spreadsheetMatch) {
+                        try {
+                            const data = JSON.parse(spreadsheetMatch[1]);
+                            if (Array.isArray(data) && data.length > 0) {
+                                setPersistentTableData(data);
+                                setTableData(data);
+                                foundData = true;
+                                break;
+                            }
+                        } catch (e) {
+                            console.error('Failed to parse stored spreadsheet data:', e);
+                        }
+                    }
+                }
+            }
+            if (!foundData && threadId) {
+                const cachedData = getCachedSpreadsheetData(threadId);
+                if (cachedData && Array.isArray(cachedData) && cachedData.length > 0) {
+                    setPersistentTableData(cachedData);
+                    setTableData(cachedData);
+                }
+            }
+        }
+    }, [initialMessages, threadId]);
+
+    const allMessages = useMemo(() => {
+        const initialOnly = initialMessages.filter((m: any) => !messages.find((msg: any) => msg.id === m.id));
+        return [...initialOnly, ...messages];
+    }, [initialMessages, messages]);
 
     return (
         <div className="flex flex-col h-full max-w-4xl mx-auto w-full relative">
@@ -191,14 +274,60 @@ export function Chat({ id, initialMessages = [] }: ChatProps) {
                 }}
             />
             <div className="flex-1 overflow-y-auto p-6 space-y-4 bg-white" ref={scrollRef}>
-                {messages.length === 0 ? (
+                {messages.length === 0 && initialMessages.length === 0 ? (
                     <WelcomeScreen onExampleClick={(text) => {
                         setLocalInput(text);
                         sendMessage({ role: 'user', parts: [{ type: 'text', text }] });
                     }} />
                 ) : (
                     <>
-                        {messages.map((m: any) => (
+                        {persistentTableData && messages.length === 0 && initialMessages.length > 0 && (
+                            <div className="mb-4 p-4 bg-white border-2 border-slate-200 rounded-2xl shadow-lg">
+                                <div className="text-slate-600 mb-3 font-semibold">Spreadsheet Data:</div>
+                                {renderTablePreview(persistentTableData)}
+                                <button
+                                    onClick={() => {
+                                        setTableData(persistentTableData);
+                                        setIsTableOpen(true);
+                                    }}
+                                    className="mt-3 px-4 py-2.5 bg-gradient-to-r from-green-500 to-emerald-500 text-white border border-green-600 rounded-xl hover:from-green-600 hover:to-emerald-600 flex items-center gap-2 shadow-md hover:shadow-lg transition-all transform hover:scale-[1.02] font-medium"
+                                >
+                                    <span className="text-sm">View Full Table</span>
+                                </button>
+                            </div>
+                        )}
+                        {allMessages.map((m: any) => {
+                            if (!m || !m.role) return null;
+                            
+                            const textParts = m.parts?.filter((p: any) => p.type === 'text') || [];
+                            const toolParts = m.parts?.filter((p: any) => p.type?.startsWith('tool-')) || [];
+                            
+                            let messageContent = '';
+                            let storedSpreadsheetData: any[][] | null = null;
+                            
+                            if (typeof m.content === 'string' && m.content) {
+                                const spreadsheetMatch = m.content.match(/<!-- SPREADSHEET_DATA:(.+?) -->/);
+                                if (spreadsheetMatch) {
+                                    try {
+                                        storedSpreadsheetData = JSON.parse(spreadsheetMatch[1]);
+                                        messageContent = m.content.replace(/<!-- SPREADSHEET_DATA:.+? -->/g, '').trim();
+                                    } catch (e) {
+                                        messageContent = m.content;
+                                    }
+                                } else {
+                                    messageContent = m.content;
+                                }
+                            }
+                            
+                            const hasTextContent = textParts.length > 0 || messageContent.length > 0;
+                            const hasToolContent = toolParts.length > 0;
+                            const hasContent = hasTextContent || hasToolContent || storedSpreadsheetData;
+                            
+                            if (!hasContent && m.role === 'assistant') {
+                                return null;
+                            }
+                            
+                            return (
                             <div key={m.id} className={`flex ${m.role === 'user' ? 'justify-end' : 'justify-start'} mb-4`}>
                                 <div
                                     className={`max-w-[80%] p-4 rounded-2xl shadow-lg ${m.role === 'user'
@@ -206,14 +335,33 @@ export function Chat({ id, initialMessages = [] }: ChatProps) {
                                         : 'bg-white text-slate-800 border-2 border-slate-200'
                                         }`}
                                 >
-                                    <div className="whitespace-pre-wrap">
-                                        {m.parts?.map((part: any, idx: number) => {
-                                            if (part.type === 'text') {
-                                                return <span key={idx}>{part.text}</span>;
-                                            }
-                                            return null;
-                                        })}
-                                    </div>
+                                    {(textParts.length > 0 || messageContent) && (
+                                        <div className="whitespace-pre-wrap mb-2">
+                                            {textParts.length > 0 ? (
+                                                textParts.map((part: any, idx: number) => (
+                                                    <span key={idx}>{part.text}</span>
+                                                ))
+                                            ) : (
+                                                <span>{messageContent}</span>
+                                            )}
+                                        </div>
+                                    )}
+                                    {storedSpreadsheetData && (
+                                        <div className="mt-3 text-sm">
+                                            <div className="text-slate-600 mb-3 font-semibold">Spreadsheet Data:</div>
+                                            {renderTablePreview(storedSpreadsheetData)}
+                                            <button
+                                                onClick={() => {
+                                                    setTableData(storedSpreadsheetData);
+                                                    setIsTableOpen(true);
+                                                }}
+                                                className="mt-3 px-4 py-2.5 bg-gradient-to-r from-green-500 to-emerald-500 text-white border border-green-600 rounded-xl hover:from-green-600 hover:to-emerald-600 flex items-center gap-2 shadow-md hover:shadow-lg transition-all transform hover:scale-[1.02] font-medium"
+                                            >
+                                                <span className="text-sm">View Full Table</span>
+                                            </button>
+                                        </div>
+                                    )}
+                                    <div className="space-y-2">
                                     {m.parts?.map((part: any) => {
                                         if (!part.type?.startsWith('tool-')) return null;
                                         const toolInvocation = part;
@@ -231,7 +379,7 @@ export function Chat({ id, initialMessages = [] }: ChatProps) {
                                             return <div key={toolCallId} className="mt-2 text-xs text-gray-400">Checking weather...</div>
                                         }
                                         if (toolName === 'readSheet') {
-                                            if (toolInvocation.state === 'output-available') {
+                                        if (toolInvocation.state === 'output-available') {
                                                 const sheetData = toolInvocation.output as any[][];
                                                 return (
                                                     <div key={toolCallId} className="mt-3 text-sm">
@@ -253,35 +401,330 @@ export function Chat({ id, initialMessages = [] }: ChatProps) {
                                         }
                                         if (toolName === 'askForConfirmation') {
                                             if (toolInvocation.state === 'output-available') {
-                                                return <div key={toolCallId} className="mt-2 text-sm text-gray-500">Action {toolInvocation.output === 'Yes' ? 'Confirmed' : 'Cancelled'}</div>
+                                                const output = toolInvocation.output;
+                                                const input = toolInvocation.input;
+                                                console.log('askForConfirmation tool:', { output, input, state: toolInvocation.state, outputType: typeof output });
+                                                
+                                                const userResponse = output && (typeof output === 'string' ? output : (output?.output || output?.result));
+                                                const isConfirmed = userResponse === 'Yes' || userResponse === true;
+                                                const isCancelled = userResponse === 'No' || userResponse === false;
+                                                
+                                                const hasError = output && (output?.error || (typeof output === 'string' && output.toLowerCase().includes('error')));
+                                                const shouldShowConfirmation = input && !isConfirmed && !isCancelled && !hasError;
+                                                
+                                                if (shouldShowConfirmation) {
+                                                    const action = input?.action || output?.action || 'this action';
+                                                    const description = input?.message || output?.message || 'Are you sure you want to proceed?';
+                                                    
+                                                    return (
+                                                        <div key={toolCallId} className="mt-3 first:mt-0">
+                                                            <div className="p-4 bg-gradient-to-br from-amber-50 to-orange-50 border-2 border-amber-200 rounded-xl shadow-sm">
+                                                                <div className="flex items-start gap-3 mb-4">
+                                                                    <div className="p-2 bg-amber-100 rounded-lg flex-shrink-0">
+                                                                        <AlertTriangle size={20} className="text-amber-600" strokeWidth={2.5} />
+                                                                    </div>
+                                                                    <div className="flex-1 min-w-0">
+                                                                        <h4 className="font-bold text-base text-slate-800 mb-1">Confirmation Required</h4>
+                                                                        <p className="text-slate-700 text-sm mb-2">{description}</p>
+                                                                        <div className="text-xs text-slate-600 bg-white/80 px-2.5 py-1.5 rounded-md border border-amber-200">
+                                                                            <span className="font-semibold">Action:</span> <span className="font-mono">{action}</span>
+                                                                        </div>
+                                                                        {output?.error && (
+                                                                            <div className="mt-2 text-xs text-red-600 bg-red-50 px-2 py-1 rounded">
+                                                                                {output.error}
+                                                                            </div>
+                                                                        )}
+                                                                    </div>
+                                                                </div>
+                                                                <div className="flex gap-2">
+                                                                    <button
+                                                                        className="flex-1 px-4 py-2.5 bg-gradient-to-r from-green-500 to-emerald-500 text-white rounded-lg hover:from-green-600 hover:to-emerald-600 shadow-md hover:shadow-lg transition-all transform hover:scale-[1.02] active:scale-[0.98] font-semibold text-sm flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                                                                        onClick={async () => {
+                                                                            try {
+                                                                                console.log('Adding tool result Yes for toolCallId:', toolCallId, 'Tool invocation:', toolInvocation);
+                                                                                const toolName = toolInvocation.input?.toolName;
+                                                                                const toolParamsJson = toolInvocation.input?.toolParamsJson;
+                                                                                console.log('Will execute tool:', toolName, 'with params:', toolParamsJson);
+                                                                                
+                                                                                console.log('Before addToolResult - status:', status, 'toolCallId:', toolCallId);
+                                                                                try {
+                                                                                    await addToolResult({ toolCallId, result: 'Yes' } as any);
+                                                                                    console.log('addToolResult called successfully');
+                                                                                    console.log('After addToolResult - status:', status);
+                                                                                    
+                                                                                    const toolParams = JSON.parse(toolParamsJson || '{}');
+                                                                                    let followUpText = '';
+                                                                                    if (toolName === 'updateCell') {
+                                                                                        followUpText = `I confirm. Please proceed with updating cell ${toolParams.cell} to ${toolParams.value}.`;
+                                                                                    } else if (toolName === 'updateRange') {
+                                                                                        followUpText = `I confirm. Please proceed with updating range ${toolParams.range}.`;
+                                                                                    } else if (toolName === 'updateCells') {
+                                                                                        followUpText = `I confirm. Please proceed with updating the cells.`;
+                                                                                    } else if (toolName === 'deleteThread') {
+                                                                                        followUpText = `I confirm. Please proceed with deleting the thread.`;
+                                                                                    }
+                                                                                    if (followUpText && sendMessage) {
+                                                                                        setTimeout(() => {
+                                                                                            sendMessage({ role: 'user', parts: [{ type: 'text', text: followUpText }] });
+                                                                                        }, 100);
+                                                                                    }
+                                                                                } catch (err) {
+                                                                                    console.error('addToolResult failed:', err);
+                                                                                }
+                                                                            } catch (error) {
+                                                                                console.error('Error adding tool result:', error);
+                                                                            }
+                                                                        }}
+                                                                        disabled={status === 'streaming' || status === 'submitted'}
+                                                                    >
+                                                                        <CheckCircle2 size={16} />
+                                                                        Confirm
+                                                                    </button>
+                                                                    <button
+                                                                        className="flex-1 px-4 py-2.5 bg-gradient-to-r from-red-500 to-red-600 text-white rounded-lg hover:from-red-600 hover:to-red-700 shadow-md hover:shadow-lg transition-all transform hover:scale-[1.02] active:scale-[0.98] font-semibold text-sm flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                                                                        onClick={async () => {
+                                                                            try {
+                                                                                await addToolResult({ toolCallId, result: 'No' } as any);
+                                                                            } catch (error) {
+                                                                                console.error('Error adding tool result:', error);
+                                                                            }
+                                                                        }}
+                                                                        disabled={status === 'streaming' || status === 'submitted'}
+                                                                    >
+                                                                        <XCircle size={16} />
+                                                                        Cancel
+                                                                    </button>
+                                                                </div>
+                                                            </div>
+                                                        </div>
+                                                    );
+                                                }
+                                                
+                                                if (isConfirmed || isCancelled) {
+                                                    return (
+                                                        <div key={toolCallId} className="mt-2 first:mt-0">
+                                                            <div className="inline-flex items-center gap-2 px-3 py-2 bg-gradient-to-r from-slate-50 to-slate-100 border border-slate-200 rounded-lg text-sm">
+                                                                {isConfirmed ? (
+                                                                    <>
+                                                                        <CheckCircle2 size={16} className="text-green-600 flex-shrink-0" />
+                                                                        <span className="text-green-700 font-medium">Action confirmed</span>
+                                                                    </>
+                                                                ) : (
+                                                                    <>
+                                                                        <XCircle size={16} className="text-red-600 flex-shrink-0" />
+                                                                        <span className="text-red-700 font-medium">Action cancelled</span>
+                                                                    </>
+                                                                )}
+                                                            </div>
+                                                        </div>
+                                                    );
+                                                }
+                                                return null;
                                             }
                                             if (toolInvocation.state === 'input-available') {
+                                                const action = toolInvocation.input.action || 'this action';
+                                                const description = toolInvocation.input.message || 'Are you sure you want to proceed?';
+                                                
                                                 return (
-                                                    <div key={toolCallId} className="mt-2 p-3 bg-white border rounded shadow-sm">
-                                                        <p className="mb-2 text-gray-800 font-medium">{toolInvocation.input.message}</p>
-                                                        <div className="flex gap-2">
+                                                    <div key={toolCallId} className="mt-3 p-5 bg-gradient-to-br from-amber-50 to-orange-50 border-2 border-amber-200 rounded-xl shadow-lg">
+                                                        <div className="flex items-start gap-3 mb-4">
+                                                            <div className="p-2 bg-amber-100 rounded-lg">
+                                                                <AlertTriangle size={24} className="text-amber-600" strokeWidth={2.5} />
+                                                            </div>
+                                                            <div className="flex-1">
+                                                                <h4 className="font-bold text-lg text-slate-800 mb-1">Confirmation Required</h4>
+                                                                <p className="text-slate-700 font-medium mb-2">{description}</p>
+                                                                <div className="text-sm text-slate-600 bg-white/60 px-3 py-2 rounded-lg border border-amber-200">
+                                                                    <span className="font-semibold">Action:</span> {action}
+                                                                </div>
+                                                            </div>
+                                                        </div>
+                                                        <div className="flex gap-3">
                                                             <button
-                                                                className="px-3 py-1 bg-red-500 text-white text-sm rounded hover:bg-red-600"
-                                                                onClick={() => addToolResult({ toolCallId, output: 'Yes' } as any)}
+                                                                className="flex-1 px-5 py-3 bg-gradient-to-r from-green-500 to-emerald-500 text-white rounded-xl hover:from-green-600 hover:to-emerald-600 shadow-md hover:shadow-lg transition-all transform hover:scale-105 active:scale-95 font-semibold flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                                                                onClick={async () => {
+                                                                    try {
+                                                                        await addToolResult({ toolCallId, result: 'Yes' } as any);
+                                                                    } catch (error) {
+                                                                        console.error('Error adding tool result:', error);
+                                                                    }
+                                                                }}
+                                                                disabled={status === 'streaming' || status === 'submitted'}
                                                             >
-                                                                Yes
+                                                                <CheckCircle2 size={18} />
+                                                                Confirm
                                                             </button>
                                                             <button
-                                                                className="px-3 py-1 bg-gray-200 text-gray-800 text-sm rounded hover:bg-gray-300"
-                                                                onClick={() => addToolResult({ toolCallId, output: 'No' } as any)}
+                                                                className="flex-1 px-5 py-3 bg-gradient-to-r from-red-500 to-red-600 text-white rounded-xl hover:from-red-600 hover:to-red-700 shadow-md hover:shadow-lg transition-all transform hover:scale-105 active:scale-95 font-semibold flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                                                                onClick={async () => {
+                                                                    try {
+                                                                        await addToolResult({ toolCallId, result: 'No' } as any);
+                                                                    } catch (error) {
+                                                                        console.error('Error adding tool result:', error);
+                                                                    }
+                                                                }}
+                                                                disabled={status === 'streaming' || status === 'submitted'}
                                                             >
-                                                                No
+                                                                <XCircle size={18} />
+                                                                Cancel
                                                             </button>
                                                         </div>
                                                     </div>
                                                 );
                                             }
                                         }
+                                        if (toolName === 'updateCell') {
+                                            if (toolInvocation.state === 'output-available') {
+                                                const output = toolInvocation.output;
+                                                if (output.success) {
+                                                    return (
+                                                        <div key={toolCallId} className="mt-3 p-3 bg-gradient-to-r from-green-50 to-emerald-50 border-2 border-green-200 rounded-xl">
+                                                            <div className="flex items-center gap-2 text-green-700 font-medium">
+                                                                <CheckCircle2 size={18} />
+                                                                <span>Cell {output.cell} updated to: {String(output.value)}</span>
+                                                            </div>
+                                                        </div>
+                                                    );
+                                                } else if (output.requiresConfirmation) {
+                                                    return (
+                                                        <div key={toolCallId} className="mt-3 p-3 bg-gradient-to-r from-amber-50 to-orange-50 border-2 border-amber-200 rounded-xl">
+                                                            <div className="flex items-center gap-2 text-amber-700 font-medium">
+                                                                <AlertTriangle size={18} />
+                                                                <span>{output.error || "Confirmation required before executing this action."}</span>
+                                                            </div>
+                                                        </div>
+                                                    );
+                                                } else {
+                                                    return (
+                                                        <div key={toolCallId} className="mt-3 p-3 bg-gradient-to-r from-red-50 to-pink-50 border-2 border-red-200 rounded-xl">
+                                                            <div className="flex items-center gap-2 text-red-700 font-medium">
+                                                                <XCircle size={18} />
+                                                                <span>Error: {output.error || "Failed to update cell"}</span>
+                                                            </div>
+                                                        </div>
+                                                    );
+                                                }
+                                            }
+                                            return <div key={toolCallId} className="mt-2 text-xs text-slate-500 italic">Updating cell...</div>;
+                                        }
+                                        if (toolName === 'updateRange') {
+                                            if (toolInvocation.state === 'output-available') {
+                                                const output = toolInvocation.output;
+                                                if (output.success) {
+                                                    return (
+                                                        <div key={toolCallId} className="mt-3 p-3 bg-gradient-to-r from-green-50 to-emerald-50 border-2 border-green-200 rounded-xl">
+                                                            <div className="flex items-center gap-2 text-green-700 font-medium">
+                                                                <CheckCircle2 size={18} />
+                                                                <span>Range {output.range} updated successfully ({output.cellsUpdated} cells)</span>
+                                                            </div>
+                                                        </div>
+                                                    );
+                                                } else if (output.requiresConfirmation) {
+                                                    return (
+                                                        <div key={toolCallId} className="mt-3 p-3 bg-gradient-to-r from-amber-50 to-orange-50 border-2 border-amber-200 rounded-xl">
+                                                            <div className="flex items-center gap-2 text-amber-700 font-medium">
+                                                                <AlertTriangle size={18} />
+                                                                <span>{output.error || "Confirmation required before executing this action."}</span>
+                                                            </div>
+                                                        </div>
+                                                    );
+                                                } else {
+                                                    return (
+                                                        <div key={toolCallId} className="mt-3 p-3 bg-gradient-to-r from-red-50 to-pink-50 border-2 border-red-200 rounded-xl">
+                                                            <div className="flex items-center gap-2 text-red-700 font-medium">
+                                                                <XCircle size={18} />
+                                                                <span>Error: {output.error || "Failed to update range"}</span>
+                                                            </div>
+                                                        </div>
+                                                    );
+                                                }
+                                            }
+                                            return <div key={toolCallId} className="mt-2 text-xs text-slate-500 italic">Updating range...</div>;
+                                        }
+                                        if (toolName === 'updateCells') {
+                                            if (toolInvocation.state === 'output-available') {
+                                                const output = toolInvocation.output;
+                                                if (output.success) {
+                                                    return (
+                                                        <div key={toolCallId} className="mt-3 p-3 bg-gradient-to-r from-green-50 to-emerald-50 border-2 border-green-200 rounded-xl">
+                                                            <div className="flex items-center gap-2 text-green-700 font-medium">
+                                                                <CheckCircle2 size={18} />
+                                                                <span>Updated {output.cellsUpdated} cell(s) successfully</span>
+                                                            </div>
+                                                            {output.updates && output.updates.length > 0 && (
+                                                                <div className="mt-2 text-sm text-green-600">
+                                                                    {output.updates.map((u: any, idx: number) => (
+                                                                        <div key={idx} className="font-mono text-xs">
+                                                                            {u.cell}: {String(u.value)}
+                                                                        </div>
+                                                                    ))}
+                                                                </div>
+                                                            )}
+                                                        </div>
+                                                    );
+                                                } else if (output.requiresConfirmation) {
+                                                    return (
+                                                        <div key={toolCallId} className="mt-3 p-3 bg-gradient-to-r from-amber-50 to-orange-50 border-2 border-amber-200 rounded-xl">
+                                                            <div className="flex items-center gap-2 text-amber-700 font-medium">
+                                                                <AlertTriangle size={18} />
+                                                                <span>{output.error || "Confirmation required before executing this action."}</span>
+                                                            </div>
+                                                        </div>
+                                                    );
+                                                } else {
+                                                    return (
+                                                        <div key={toolCallId} className="mt-3 p-3 bg-gradient-to-r from-red-50 to-pink-50 border-2 border-red-200 rounded-xl">
+                                                            <div className="flex items-center gap-2 text-red-700 font-medium">
+                                                                <XCircle size={18} />
+                                                                <span>Error: {output.error || "Failed to update cells"}</span>
+                                                            </div>
+                                                        </div>
+                                                    );
+                                                }
+                                            }
+                                            return <div key={toolCallId} className="mt-2 text-xs text-slate-500 italic">Updating cells...</div>;
+                                        }
+                                        if (toolName === 'deleteThread') {
+                                            if (toolInvocation.state === 'output-available') {
+                                                const output = toolInvocation.output;
+                                                if (output.success) {
+                                                    return (
+                                                        <div key={toolCallId} className="mt-3 p-3 bg-gradient-to-r from-green-50 to-emerald-50 border-2 border-green-200 rounded-xl">
+                                                            <div className="flex items-center gap-2 text-green-700 font-medium">
+                                                                <CheckCircle2 size={18} />
+                                                                <span>Thread deleted successfully</span>
+                                                            </div>
+                                                        </div>
+                                                    );
+                                                } else if (output.requiresConfirmation) {
+                                                    return (
+                                                        <div key={toolCallId} className="mt-3 p-3 bg-gradient-to-r from-amber-50 to-orange-50 border-2 border-amber-200 rounded-xl">
+                                                            <div className="flex items-center gap-2 text-amber-700 font-medium">
+                                                                <AlertTriangle size={18} />
+                                                                <span>{output.error || "Confirmation required before deleting this thread."}</span>
+                                                            </div>
+                                                        </div>
+                                                    );
+                                                } else {
+                                                    return (
+                                                        <div key={toolCallId} className="mt-3 p-3 bg-gradient-to-r from-red-50 to-pink-50 border-2 border-red-200 rounded-xl">
+                                                            <div className="flex items-center gap-2 text-red-700 font-medium">
+                                                                <XCircle size={18} />
+                                                                <span>Error: {output.error || "Failed to delete thread"}</span>
+                                                            </div>
+                                                        </div>
+                                                    );
+                                                }
+                                            }
+                                            return <div key={toolCallId} className="mt-2 text-xs text-slate-500 italic">Deleting thread...</div>;
+                                        }
                                         return null;
                                     })}
+                                    </div>
                                 </div>
                             </div>
-                        ))}
+                            );
+                        })}
                     </>
                 )}
                 {status === 'submitted' || status === 'streaming' ? (
