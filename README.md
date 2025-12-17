@@ -106,9 +106,3 @@ docker run -p 3000:3000 \
 - `src/lib/db.ts`: Bun SQLite connection.
 - `src/app/api/chat/route.ts`: Main API route handling AI stream and server-side tools.
 - `src/app/components/Chat.tsx`: Client-side Chat component with `useChat` and Generative UI rendering.
-
-## Known Limitations
-
-- "Delete Thread" tool deletes from DB but might require refresh to disappear from sidebar immediately (though `revalidatePath`/`router.refresh` is attempted).
-- XLSX writes are simplified (single file `data/example.xlsx`).
-- Currently operates on the first sheet of the XLSX file only.
