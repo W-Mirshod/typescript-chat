@@ -22,10 +22,10 @@ export function DeleteThreadButton({ threadId }: DeleteThreadButtonProps) {
         >
             <button
                 type="submit"
-                className="p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded transition-colors opacity-0 group-hover:opacity-100"
+                className="p-2 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-all duration-200 opacity-0 group-hover:opacity-100 hover:scale-110 active:scale-95"
                 onClick={(e) => e.stopPropagation()}
             >
-                <Trash2 size={14} />
+                <Trash2 size={16} className="stroke-[2]" />
             </button>
         </form>
     );

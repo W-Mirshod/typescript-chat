@@ -60,14 +60,16 @@ export function TableDialog({ isOpen, onClose, data, onInsertReference }: TableD
     };
 
     return (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50" onMouseUp={handleMouseUp}>
-            <div className="bg-white rounded-lg shadow-xl w-3/4 h-3/4 flex flex-col">
-                <div className="flex justify-between items-center p-4 border-b">
-                    <h3 className="font-semibold text-lg">Table View</h3>
-                    <button onClick={onClose} className="text-gray-500 hover:text-black"><X /></button>
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm" onMouseUp={handleMouseUp}>
+            <div className="bg-white rounded-2xl shadow-2xl w-3/4 h-3/4 flex flex-col border-2 border-slate-200 overflow-hidden">
+                <div className="flex justify-between items-center p-5 border-b-2 border-slate-200 bg-gradient-to-r from-slate-50 to-white">
+                    <h3 className="font-bold text-xl text-slate-800">Table View</h3>
+                    <button onClick={onClose} className="text-slate-500 hover:text-slate-800 hover:bg-slate-100 p-2 rounded-lg transition-all">
+                        <X size={20} strokeWidth={2.5} />
+                    </button>
                 </div>
-                <div className="flex-1 overflow-auto p-4 select-none">
-                    <table className="border-collapse w-full">
+                <div className="flex-1 overflow-auto p-5 select-none bg-slate-50/50">
+                    <table className="border-collapse w-full shadow-inner rounded-lg overflow-hidden">
                         <tbody>
                             {data.map((row, r) => (
                                 <tr key={r}>
@@ -81,7 +83,7 @@ export function TableDialog({ isOpen, onClose, data, onInsertReference }: TableD
                                         return (
                                             <td
                                                 key={c}
-                                                className={`border p-2 min-w-[80px] cursor-cell ${isSelected ? 'bg-blue-100 border-blue-500' : 'bg-white border-gray-300'}`}
+                                                className={`border-2 p-3 min-w-[80px] cursor-cell transition-colors font-medium ${isSelected ? 'bg-gradient-to-br from-blue-200 to-indigo-200 border-blue-500 text-blue-900' : 'bg-white border-slate-300 text-slate-700 hover:bg-slate-50'}`}
                                                 onMouseDown={() => handleMouseDown(r, c)}
                                                 onMouseEnter={() => handleMouseEnter(r, c)}
                                             >
@@ -94,17 +96,23 @@ export function TableDialog({ isOpen, onClose, data, onInsertReference }: TableD
                         </tbody>
                     </table>
                 </div>
-                <div className="p-4 border-t flex justify-end gap-2">
-                    <div className="mr-auto text-sm text-gray-500 flex items-center">
-                        {getSelectionReference() ? `Selected: ${getSelectionReference()}` : "Select a range..."}
+                <div className="p-5 border-t-2 border-slate-200 flex justify-end gap-3 bg-gradient-to-r from-white to-slate-50">
+                    <div className="mr-auto text-sm text-slate-600 flex items-center font-semibold">
+                        {getSelectionReference() ? (
+                            <span className="px-3 py-1.5 bg-blue-50 text-blue-700 rounded-lg border border-blue-200">
+                                Selected: <span className="font-mono">{getSelectionReference()}</span>
+                            </span>
+                        ) : (
+                            <span className="text-slate-500">Select a range...</span>
+                        )}
                     </div>
-                    <button onClick={onClose} className="px-4 py-2 text-gray-600 hover:bg-gray-100 rounded">Cancel</button>
+                    <button onClick={onClose} className="px-5 py-2.5 text-slate-700 hover:bg-slate-100 rounded-xl font-medium transition-all border-2 border-slate-200 hover:border-slate-300">Cancel</button>
                     <button
                         onClick={handleInsert}
                         disabled={!selection.start}
-                        className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 disabled:opacity-50 flex items-center gap-2"
+                        className="px-6 py-2.5 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-xl hover:from-blue-700 hover:to-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 font-semibold shadow-lg hover:shadow-xl transition-all transform hover:scale-105 active:scale-95 disabled:transform-none"
                     >
-                        <Check size={16} /> Insert Mention
+                        <Check size={18} strokeWidth={2.5} /> Insert Mention
                     </button>
                 </div>
             </div>
