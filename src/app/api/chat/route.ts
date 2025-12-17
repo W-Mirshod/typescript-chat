@@ -6,14 +6,13 @@ import { z } from "zod";
 
 export const maxDuration = 30;
 
-// Initialize Azure OpenAI provider
-// Initialize Azure OpenAI provider
-// If AZURE_OPENAI_ENDPOINT is set, it takes precedence (useful for proxies or custom domains).
-// Otherwise, we construct it from AZURE_OPENAI_RESOURCE_NAME.
+const endpoint = process.env.AZURE_OPENAI_ENDPOINT || '';
+const resourceName = endpoint.replace('https://', '').split('.')[0];
+
 const azureProvider = createAzure({
     apiKey: process.env.AZURE_OPENAI_API_KEY!,
-    baseURL: process.env.AZURE_OPENAI_ENDPOINT,
-    apiVersion: process.env.AZURE_OPENAI_API_VERSION,
+    resourceName: resourceName,
+    apiVersion: process.env.AZURE_OPENAI_API_VERSION!,
 });
 
 export async function POST(req: Request) {
@@ -40,6 +39,9 @@ export async function POST(req: Request) {
         // Save user message
         const userMessage = messages[messages.length - 1];
         if (threadId && userMessage) {
+            // Ensure message has an ID; generate one if missing to avoid DB constraint errors
+            const messageId = userMessage.id ?? (typeof crypto !== 'undefined' && 'randomUUID' in crypto ? crypto.randomUUID() : `${Date.now()}`);
+
             // Check if thread exists, create if not
             const thread = getThread(threadId);
             if (!thread) {
@@ -48,7 +50,7 @@ export async function POST(req: Request) {
             }
 
             saveMessage({
-                id: userMessage.id,
+                id: messageId,
                 threadId,
                 role: 'user',
                 content: userMessage.content,
@@ -133,9 +135,19 @@ export async function POST(req: Request) {
             },
         });
 
-        return (result as any).toDataStreamResponse();
-    } catch (error) {
+        return result.toUIMessageStreamResponse();
+    } catch (error: any) {
         console.error("API ROUTE ERROR:", error);
-        return new Response(JSON.stringify({ error: "Internal Server Error", details: String(error) }), { status: 500 });
+        
+        let errorMessage = "Internal Server Error";
+        let errorDetails = String(error);
+        
+        if (error?.message?.includes("API version not supported") || error?.responseBody?.includes("API version not supported")) {
+            errorMessage = "API version not supported";
+            const currentVersion = process.env.AZURE_OPENAI_API_VERSION;
+            errorDetails = `Your Azure OpenAI resource doesn't support API version '${currentVersion}'. Update AZURE_OPENAI_API_VERSION environment variable and restart with: docker compose restart`;
+        }
+        
+        return new Response(JSON.stringify({ error: errorMessage, details: errorDetails }), { status: 500 });
     }
 }

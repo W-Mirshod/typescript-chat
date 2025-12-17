@@ -116,6 +116,8 @@ export function Chat({ id, initialMessages = [] }: ChatProps) {
     // Note: In this version (v2+ / ai v5), useChat helpers are reduced.
     // We must manage input state manually and use sendMessage.
     const { messages, status, addToolResult, sendMessage, error } = useChat({
+        id: id || 'default',
+        api: '/api/chat',
         initialMessages,
         maxSteps: 5,
         body: { threadId: id },
@@ -161,8 +163,9 @@ export function Chat({ id, initialMessages = [] }: ChatProps) {
                 {messages.length === 0 ? (
                     <WelcomeScreen onExampleClick={(text) => {
                         setLocalInput(text);
-                        // Send message immediately
-                        sendMessage({ role: 'user', content: text } as any);
+                        // Send message immediately with an id (fallback to timestamp if crypto.randomUUID isn't available)
+                        const msg = { id: (typeof crypto !== 'undefined' && 'randomUUID' in crypto) ? crypto.randomUUID() : `${Date.now()}`, role: 'user', content: text } as any;
+                        sendMessage(msg);
                     }} />
                 ) : (
                     <>
@@ -266,8 +269,9 @@ export function Chat({ id, initialMessages = [] }: ChatProps) {
 
                         if (sendMessage) {
                             setLocalInput('');
-                            // Assuming sendMessage accepts a message object
-                            await sendMessage({ role: 'user', content: message } as any);
+                            // Send message with an id (fallback to timestamp if crypto.randomUUID isn't available)
+                            const msg = { id: (typeof crypto !== 'undefined' && 'randomUUID' in crypto) ? crypto.randomUUID() : `${Date.now()}`, role: 'user', content: message } as any;
+                            await sendMessage(msg);
                         }
                     }}
                     className="flex gap-2"
