@@ -41,3 +41,8 @@ data/debug.log
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# database
+chat.db
+chat.db-wal
+chat.db-shm

@@ -8,9 +8,12 @@ services:
       - AZURE_OPENAI_ENDPOINT=${AZURE_OPENAI_ENDPOINT}
       - AZURE_OPENAI_DEPLOYMENT=${AZURE_OPENAI_DEPLOYMENT}
       - AZURE_OPENAI_API_VERSION=${AZURE_OPENAI_API_VERSION}
-      - NODE_ENV=production
+      - NODE_ENV=development
+      - WATCHPACK_POLLING=true
     volumes:
-      # Persist database and XLSX files
+      - .:/app
+      - /app/node_modules
+      - /app/.next
       - ./data:/app/data
       - ./chat.db:/app/chat.db
     restart: unless-stopped

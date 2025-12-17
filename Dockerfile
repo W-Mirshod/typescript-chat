@@ -15,9 +15,7 @@ RUN mkdir -p data
 RUN bun scripts/init-db.ts || true
 RUN bun scripts/create-xlsx.ts || true
 
-RUN bun run build
-
 EXPOSE 3000
 
-CMD ["bun", "run", "start"]
+CMD ["bun", "run", "dev"]
 
