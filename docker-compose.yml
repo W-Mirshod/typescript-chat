@@ -1,6 +1,7 @@
 services:
   app:
     build: .
+    container_name: typescript-chat
     ports:
       - "8010:3000"
     environment:

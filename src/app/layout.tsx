@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Inter } from "next/font/google";
 import "./globals.css";
 import { Sidebar } from "./components/Sidebar";
+import { LayoutShell } from "./components/LayoutShell";
 
 export const dynamic = 'force-dynamic';
 
@@ -19,11 +20,10 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
-      <body className={`${inter.className} flex h-screen overflow-hidden bg-gradient-to-br from-slate-50 via-white to-slate-50`}>
-        <Sidebar />
-        <main className="flex-1 bg-white relative flex flex-col h-full overflow-hidden">
+      <body className={`${inter.className} h-screen overflow-hidden`}>
+        <LayoutShell sidebar={<Sidebar />}>
           {children}
-        </main>
+        </LayoutShell>
       </body>
     </html>
   );

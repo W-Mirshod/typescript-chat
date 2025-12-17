@@ -7,3 +7,5 @@ export function cacheSpreadsheetData(threadId: string, data: any[][]) {
 export function getCachedSpreadsheetData(threadId: string): any[][] | null {
     return spreadsheetCache.get(threadId) || null;
 }
+
+

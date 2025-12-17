@@ -61,14 +61,14 @@ export function TableDialog({ isOpen, onClose, data, onInsertReference }: TableD
 
     return (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm" onMouseUp={handleMouseUp}>
-            <div className="bg-white rounded-2xl shadow-2xl w-3/4 h-3/4 flex flex-col border-2 border-slate-200 overflow-hidden">
-                <div className="flex justify-between items-center p-5 border-b-2 border-slate-200 bg-gradient-to-r from-slate-50 to-white">
+            <div className="bg-white rounded-2xl shadow-2xl w-[95%] h-[90%] md:w-3/4 md:h-3/4 flex flex-col border-2 border-slate-200 overflow-hidden">
+                <div className="flex justify-between items-center p-3 md:p-5 border-b-2 border-slate-200 bg-gradient-to-r from-slate-50 to-white">
                     <h3 className="font-bold text-xl text-slate-800">Table View</h3>
                     <button onClick={onClose} className="text-slate-500 hover:text-slate-800 hover:bg-slate-100 p-2 rounded-lg transition-all">
                         <X size={20} strokeWidth={2.5} />
                     </button>
                 </div>
-                <div className="flex-1 overflow-auto p-5 select-none bg-slate-50/50">
+                <div className="flex-1 overflow-auto p-3 md:p-5 select-none bg-slate-50/50">
                     <table className="border-collapse w-full shadow-inner rounded-lg overflow-hidden">
                         <tbody>
                             {data.map((row, r) => (
@@ -96,8 +96,8 @@ export function TableDialog({ isOpen, onClose, data, onInsertReference }: TableD
                         </tbody>
                     </table>
                 </div>
-                <div className="p-5 border-t-2 border-slate-200 flex justify-end gap-3 bg-gradient-to-r from-white to-slate-50">
-                    <div className="mr-auto text-sm text-slate-600 flex items-center font-semibold">
+                <div className="p-3 md:p-5 border-t-2 border-slate-200 flex flex-col md:flex-row justify-end gap-3 bg-gradient-to-r from-white to-slate-50">
+                    <div className="mr-auto text-sm text-slate-600 flex items-center font-semibold mb-2 md:mb-0">
                         {getSelectionReference() ? (
                             <span className="px-3 py-1.5 bg-blue-50 text-blue-700 rounded-lg border border-blue-200">
                                 Selected: <span className="font-mono">{getSelectionReference()}</span>
@@ -106,14 +106,16 @@ export function TableDialog({ isOpen, onClose, data, onInsertReference }: TableD
                             <span className="text-slate-500">Select a range...</span>
                         )}
                     </div>
-                    <button onClick={onClose} className="px-5 py-2.5 text-slate-700 hover:bg-slate-100 rounded-xl font-medium transition-all border-2 border-slate-200 hover:border-slate-300">Cancel</button>
-                    <button
-                        onClick={handleInsert}
-                        disabled={!selection.start}
-                        className="px-6 py-2.5 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-xl hover:from-blue-700 hover:to-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 font-semibold shadow-lg hover:shadow-xl transition-all transform hover:scale-105 active:scale-95 disabled:transform-none"
-                    >
-                        <Check size={18} strokeWidth={2.5} /> Insert Mention
-                    </button>
+                    <div className="flex gap-3 justify-end">
+                        <button onClick={onClose} className="px-5 py-2.5 text-slate-700 hover:bg-slate-100 rounded-xl font-medium transition-all border-2 border-slate-200 hover:border-slate-300">Cancel</button>
+                        <button
+                            onClick={handleInsert}
+                            disabled={!selection.start}
+                            className="px-6 py-2.5 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-xl hover:from-blue-700 hover:to-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 font-semibold shadow-lg hover:shadow-xl transition-all transform hover:scale-105 active:scale-95 disabled:transform-none"
+                        >
+                            <Check size={18} strokeWidth={2.5} /> Insert Mention
+                        </button>
+                    </div>
                 </div>
             </div>
         </div>

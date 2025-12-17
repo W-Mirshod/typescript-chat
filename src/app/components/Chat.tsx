@@ -63,26 +63,26 @@ function renderTablePreview(data: any[][]): ReactElement {
 
 function WelcomeScreen({ onExampleClick }: { onExampleClick: (text: string) => void }) {
     return (
-        <div className="flex flex-col items-center justify-center h-full text-center p-8 space-y-10">
+        <div className="flex flex-col items-center justify-center h-full text-center p-4 md:p-8 space-y-6 md:space-y-10">
             <div className="relative">
                 <div className="absolute inset-0 bg-gradient-to-r from-blue-400 to-indigo-500 rounded-full blur-2xl opacity-20 animate-pulse"></div>
-                <div className="relative bg-gradient-to-br from-blue-500 to-indigo-600 p-6 rounded-2xl shadow-2xl transform hover:scale-105 transition-transform duration-300">
-                    <Terminal size={40} className="text-white" strokeWidth={2.5} />
+                <div className="relative bg-gradient-to-br from-blue-500 to-indigo-600 p-4 md:p-6 rounded-2xl shadow-2xl transform hover:scale-105 transition-transform duration-300">
+                    <Terminal size={32} className="text-white md:w-10 md:h-10" strokeWidth={2.5} />
                 </div>
             </div>
-            <div className="space-y-3">
-                <h1 className="text-4xl font-bold bg-gradient-to-r from-slate-800 to-slate-600 bg-clip-text text-transparent">
+            <div className="space-y-2 md:space-y-3">
+                <h1 className="text-2xl md:text-4xl font-bold bg-gradient-to-r from-slate-800 to-slate-600 bg-clip-text text-transparent">
                     Welcome to AI Chat
                 </h1>
-                <p className="text-slate-600 max-w-md text-lg font-medium">
+                <p className="text-slate-600 max-w-md text-base md:text-lg font-medium">
                     I can help you analyze data, answer questions, and manage your threads.
                 </p>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-5 max-w-2xl w-full">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3 md:gap-5 max-w-2xl w-full">
                 <button
                     onClick={() => onExampleClick("Analyze the spreadsheet data")}
-                    className="p-6 bg-white border-2 border-slate-200 rounded-2xl hover:border-blue-400 hover:shadow-xl transition-all duration-300 text-left group transform hover:scale-[1.02] hover:-translate-y-1 relative overflow-hidden"
+                    className="p-4 md:p-6 bg-white border-2 border-slate-200 rounded-2xl hover:border-blue-400 hover:shadow-xl transition-all duration-300 text-left group transform hover:scale-[1.02] hover:-translate-y-1 relative overflow-hidden"
                 >
                     <div className="absolute inset-0 bg-gradient-to-br from-blue-50 to-indigo-50 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
                     <div className="relative">
@@ -95,7 +95,7 @@ function WelcomeScreen({ onExampleClick }: { onExampleClick: (text: string) => v
                 </button>
                 <button
                     onClick={() => onExampleClick("What is the weather in Tokyo?")}
-                    className="p-6 bg-white border-2 border-slate-200 rounded-2xl hover:border-blue-400 hover:shadow-xl transition-all duration-300 text-left group transform hover:scale-[1.02] hover:-translate-y-1 relative overflow-hidden"
+                    className="p-4 md:p-6 bg-white border-2 border-slate-200 rounded-2xl hover:border-blue-400 hover:shadow-xl transition-all duration-300 text-left group transform hover:scale-[1.02] hover:-translate-y-1 relative overflow-hidden"
                 >
                     <div className="absolute inset-0 bg-gradient-to-br from-blue-50 to-indigo-50 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
                     <div className="relative">
@@ -108,7 +108,7 @@ function WelcomeScreen({ onExampleClick }: { onExampleClick: (text: string) => v
                 </button>
                 <button
                     onClick={() => onExampleClick("Write 'Test' to cell A1")}
-                    className="p-6 bg-white border-2 border-slate-200 rounded-2xl hover:border-blue-400 hover:shadow-xl transition-all duration-300 text-left group transform hover:scale-[1.02] hover:-translate-y-1 relative overflow-hidden"
+                    className="p-4 md:p-6 bg-white border-2 border-slate-200 rounded-2xl hover:border-blue-400 hover:shadow-xl transition-all duration-300 text-left group transform hover:scale-[1.02] hover:-translate-y-1 relative overflow-hidden"
                 >
                     <div className="absolute inset-0 bg-gradient-to-br from-blue-50 to-indigo-50 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
                     <div className="relative">
@@ -121,7 +121,7 @@ function WelcomeScreen({ onExampleClick }: { onExampleClick: (text: string) => v
                 </button>
                 <button
                     onClick={() => onExampleClick("Write a haiku about TypeScript")}
-                    className="p-6 bg-white border-2 border-slate-200 rounded-2xl hover:border-blue-400 hover:shadow-xl transition-all duration-300 text-left group transform hover:scale-[1.02] hover:-translate-y-1 relative overflow-hidden"
+                    className="p-4 md:p-6 bg-white border-2 border-slate-200 rounded-2xl hover:border-blue-400 hover:shadow-xl transition-all duration-300 text-left group transform hover:scale-[1.02] hover:-translate-y-1 relative overflow-hidden"
                 >
                     <div className="absolute inset-0 bg-gradient-to-br from-blue-50 to-indigo-50 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
                     <div className="relative">
@@ -743,7 +743,7 @@ export function Chat({ id, initialMessages = [] }: ChatProps) {
                 </div>
             )}
 
-            <div className="p-5 border-t-2 border-slate-200 bg-gradient-to-b from-white to-slate-50/50 shadow-2xl relative z-10 backdrop-blur-sm">
+            <div className="p-3 md:p-5 border-t-2 border-slate-200 bg-gradient-to-b from-white to-slate-50/50 shadow-2xl relative z-10 backdrop-blur-sm">
                 <form
                     onSubmit={async (e) => {
                         e.preventDefault();
@@ -755,12 +755,12 @@ export function Chat({ id, initialMessages = [] }: ChatProps) {
                             await sendMessage({ role: 'user', parts: [{ type: 'text', text: message }] });
                         }
                     }}
-                    className="flex gap-3"
+                    className="flex gap-2 md:gap-3"
                     noValidate
                 >
                     <input
                         type="text"
-                        className="flex-1 p-4 border-2 border-slate-300 bg-white text-slate-900 rounded-xl focus:outline-none focus:ring-4 focus:ring-blue-200 focus:border-blue-500 placeholder:text-slate-400 shadow-inner font-medium transition-all"
+                        className="flex-1 p-3 md:p-4 border-2 border-slate-300 bg-white text-slate-900 rounded-xl focus:outline-none focus:ring-4 focus:ring-blue-200 focus:border-blue-500 placeholder:text-slate-400 shadow-inner font-medium transition-all"
                         value={localInput}
                         onChange={(e) => setLocalInput(e.target.value)}
                         placeholder="Type a message..."
@@ -768,7 +768,7 @@ export function Chat({ id, initialMessages = [] }: ChatProps) {
                     />
                     <button
                         type="submit"
-                        className="px-8 py-4 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-xl hover:from-blue-700 hover:to-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed font-semibold shadow-lg hover:shadow-xl transition-all transform hover:scale-105 active:scale-95 disabled:transform-none"
+                        className="px-4 py-3 md:px-8 md:py-4 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-xl hover:from-blue-700 hover:to-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed font-semibold shadow-lg hover:shadow-xl transition-all transform hover:scale-105 active:scale-95 disabled:transform-none"
                         disabled={status === 'streaming' || !localInput || !localInput.trim()}
                     >
                         Send
