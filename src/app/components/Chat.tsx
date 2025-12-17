@@ -163,9 +163,7 @@ export function Chat({ id, initialMessages = [] }: ChatProps) {
                 {messages.length === 0 ? (
                     <WelcomeScreen onExampleClick={(text) => {
                         setLocalInput(text);
-                        // Send message immediately with an id (fallback to timestamp if crypto.randomUUID isn't available)
-                        const msg = { id: (typeof crypto !== 'undefined' && 'randomUUID' in crypto) ? crypto.randomUUID() : `${Date.now()}`, role: 'user', content: text } as any;
-                        sendMessage(msg);
+                        sendMessage({ role: 'user', parts: [{ type: 'text', text }] });
                     }} />
                 ) : (
                     <>
@@ -177,23 +175,33 @@ export function Chat({ id, initialMessages = [] }: ChatProps) {
                                         : 'bg-gray-100 text-gray-800 border'
                                         }`}
                                 >
-                                    <div className="whitespace-pre-wrap">{m.content}</div>
-                                    {m.toolInvocations?.map((toolInvocation: ToolInvocation) => {
+                                    <div className="whitespace-pre-wrap">
+                                        {m.parts?.map((part: any, idx: number) => {
+                                            if (part.type === 'text') {
+                                                return <span key={idx}>{part.text}</span>;
+                                            }
+                                            return null;
+                                        })}
+                                    </div>
+                                    {m.parts?.map((part: any) => {
+                                        if (!part.type?.startsWith('tool-')) return null;
+                                        const toolInvocation = part;
                                         const toolCallId = toolInvocation.toolCallId;
-                                        // Render tool result or call status
-                                        if (toolInvocation.toolName === 'getWeather') {
-                                            if ('result' in toolInvocation) {
+                                        const toolName = part.type.replace('tool-', '');
+                                        
+                                        if (toolName === 'getWeather') {
+                                            if (toolInvocation.state === 'output-available') {
                                                 return (
                                                     <div key={toolCallId} className="mt-2 p-2 bg-white rounded border text-sm text-gray-600">
-                                                        Weather in {toolInvocation.args.location}: {toolInvocation.result.temperature}°F, {toolInvocation.result.condition}
+                                                        Weather in {toolInvocation.input.location}: {toolInvocation.output.temperature}°F, {toolInvocation.output.condition}
                                                     </div>
                                                 )
                                             }
                                             return <div key={toolCallId} className="mt-2 text-xs text-gray-400">Checking weather...</div>
                                         }
-                                        if (toolInvocation.toolName === 'readSheet') {
-                                            if ('result' in toolInvocation) {
-                                                const sheetData = toolInvocation.result as any[][];
+                                        if (toolName === 'readSheet') {
+                                            if (toolInvocation.state === 'output-available') {
+                                                const sheetData = toolInvocation.output as any[][];
                                                 return (
                                                     <div key={toolCallId} className="mt-2 text-sm">
                                                         <div className="text-gray-500 mb-2 font-medium">Spreadsheet Data:</div>
@@ -212,31 +220,31 @@ export function Chat({ id, initialMessages = [] }: ChatProps) {
                                             }
                                             return <div key={toolCallId} className="mt-2 text-xs text-gray-400">Reading sheet...</div>
                                         }
-                                        if (toolInvocation.toolName === 'askForConfirmation') {
-                                            if ('result' in toolInvocation) {
-                                                // Result already submitted
-                                                return <div key={toolCallId} className="mt-2 text-sm text-gray-500">Action {toolInvocation.result === 'Yes' ? 'Confirmed' : 'Cancelled'}</div>
+                                        if (toolName === 'askForConfirmation') {
+                                            if (toolInvocation.state === 'output-available') {
+                                                return <div key={toolCallId} className="mt-2 text-sm text-gray-500">Action {toolInvocation.output === 'Yes' ? 'Confirmed' : 'Cancelled'}</div>
                                             }
-                                            // Render confirmation buttons
-                                            return (
-                                                <div key={toolCallId} className="mt-2 p-3 bg-white border rounded shadow-sm">
-                                                    <p className="mb-2 text-gray-800 font-medium">{toolInvocation.args.message}</p>
-                                                    <div className="flex gap-2">
-                                                        <button
-                                                            className="px-3 py-1 bg-red-500 text-white text-sm rounded hover:bg-red-600"
-                                                            onClick={() => addToolResult({ toolCallId, output: 'Yes' } as any)}
-                                                        >
-                                                            Yes
-                                                        </button>
-                                                        <button
-                                                            className="px-3 py-1 bg-gray-200 text-gray-800 text-sm rounded hover:bg-gray-300"
-                                                            onClick={() => addToolResult({ toolCallId, output: 'No' } as any)}
-                                                        >
-                                                            No
-                                                        </button>
+                                            if (toolInvocation.state === 'input-available') {
+                                                return (
+                                                    <div key={toolCallId} className="mt-2 p-3 bg-white border rounded shadow-sm">
+                                                        <p className="mb-2 text-gray-800 font-medium">{toolInvocation.input.message}</p>
+                                                        <div className="flex gap-2">
+                                                            <button
+                                                                className="px-3 py-1 bg-red-500 text-white text-sm rounded hover:bg-red-600"
+                                                                onClick={() => addToolResult({ toolCallId, output: 'Yes' } as any)}
+                                                            >
+                                                                Yes
+                                                            </button>
+                                                            <button
+                                                                className="px-3 py-1 bg-gray-200 text-gray-800 text-sm rounded hover:bg-gray-300"
+                                                                onClick={() => addToolResult({ toolCallId, output: 'No' } as any)}
+                                                            >
+                                                                No
+                                                            </button>
+                                                        </div>
                                                     </div>
-                                                </div>
-                                            );
+                                                );
+                                            }
                                         }
                                         return null;
                                     })}
@@ -269,9 +277,7 @@ export function Chat({ id, initialMessages = [] }: ChatProps) {
 
                         if (sendMessage) {
                             setLocalInput('');
-                            // Send message with an id (fallback to timestamp if crypto.randomUUID isn't available)
-                            const msg = { id: (typeof crypto !== 'undefined' && 'randomUUID' in crypto) ? crypto.randomUUID() : `${Date.now()}`, role: 'user', content: message } as any;
-                            await sendMessage(msg);
+                            await sendMessage({ role: 'user', parts: [{ type: 'text', text: message }] });
                         }
                     }}
                     className="flex gap-2"

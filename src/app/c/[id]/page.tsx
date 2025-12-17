@@ -20,11 +20,11 @@ export default async function ThreadPage({ params }: PageProps) {
 
     const dbMessages = getMessages(id);
 
-    // Convert DB messages to AI SDK Message format
+    // Convert DB messages to AI SDK v5 UIMessage format
     const initialMessages: any[] = dbMessages.map((m) => ({
         id: m.id,
         role: m.role,
-        content: m.content,
+        parts: [{ type: 'text', text: m.content }],
         createdAt: new Date(m.created_at),
     }));
 
