@@ -7,7 +7,7 @@ ENV PYTHON=/usr/bin/python3
 ENV NODE_ENV=production
 
 COPY package.json bun.lock ./
-RUN bun install --production=false
+RUN bun install
 
 COPY . .
 

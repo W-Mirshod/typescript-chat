@@ -434,7 +434,7 @@ export async function POST(req: Request) {
                         if (!spreadsheetData) {
                             for (const msg of response.messages || []) {
                                 if (msg.role === 'tool') {
-                                    let result = msg.content;
+                                    let result: any = msg.content;
                                     if (typeof result === 'string') {
                                         try {
                                             result = JSON.parse(result);

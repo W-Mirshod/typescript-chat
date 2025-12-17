@@ -47,7 +47,7 @@ function ensureFileExists() {
     }
 }
 
-export function getSheetData(range?: string) {
+export function getSheetData(range?: string): any[][] {
     try {
         ensureFileExists();
         
@@ -83,10 +83,10 @@ export function getSheetData(range?: string) {
         }
         
         // XLSX utils handle A1:B2 format
-        return XLSX.utils.sheet_to_json(ws, { header: 1, range: parsedRange }); // array of arrays
+        return XLSX.utils.sheet_to_json(ws, { header: 1, range: parsedRange }) as any[][]; // array of arrays
     }
 
-    return XLSX.utils.sheet_to_json(ws, { header: 1 });
+    return XLSX.utils.sheet_to_json(ws, { header: 1 }) as any[][];
     } catch (error: any) {
         console.error(`Error in getSheetData: ${error.message}`);
         console.error(`File path: ${FILE_PATH}`);

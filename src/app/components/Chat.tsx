@@ -199,8 +199,9 @@ export function Chat({ id, initialMessages = [] }: ChatProps) {
                 for (const part of parts) {
                     if (!part.type?.startsWith('tool-')) continue;
                     const toolName = part.type.replace('tool-', '');
-                    if (toolName === 'readSheet' && part.state === 'output-available') {
-                        const sheetData = part.output as any[][];
+                    const toolPart = part as any;
+                    if (toolName === 'readSheet' && toolPart.state === 'output-available') {
+                        const sheetData = toolPart.output as any[][];
                         if (!sheetData) continue;
                         const currentJson = persistentTableData ? JSON.stringify(persistentTableData) : null;
                         const newJson = JSON.stringify(sheetData);
